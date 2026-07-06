@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Лента</h2>
+
+<form method="post" action="{{ url_for('create_post') }}">
+    <textarea name="content" rows="3" cols="50" placeholder="Что у вас нового?" required></textarea><br><br>
+    <button type="submit">Опубликовать</button>
+</form>
+
+<hr>
+<div id="feed-container"></div>
+
+<script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+<script>
+const socket = io();
+
+function escapeHtml(str) {
+    return str.replace(/[&<>"']/g, match => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[match]);
+}
+
+function renderPost(p) {
+    const div = document.createElement('div');
+    div.className = 'post';
+    const date = new Date(p.created_at).toLocaleString();
+    div.innerHTML = `
+        <strong>${escapeHtml(p.username)}</strong>
+        <p>${escapeHtml(p.content)}</p>
+        <div class="meta">Опубликовано: ${date}</div>
+    `;
+    const container = document.getElementById('feed-container');
+    container.insertBefore(div, container.firstChild);
+}
+
+async function loadInitialPosts() {
+    try {
+        const res = await fetch('/api/posts');
+        const data = await res.json();
+        data.posts.forEach(renderPost);
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+socket.on('new_post', renderPost);
+loadInitialPosts();
+</script>
+{% endblock %}
